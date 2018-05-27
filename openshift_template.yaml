@@ -1,0 +1,111 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: "${NAMESPACE}-deployment"
+objects:
+# Service
+- kind: Service
+  apiVersion: v1
+  metadata:
+    name: "${SERVICE_NAME}"
+    labels: 
+      app: "${SERVICE_NAME}"
+  spec:
+    ports:
+    - name: 80-tcp
+      protocol: TCP
+      port: 80
+      targetPort: 80
+    selector:
+      app: "${SERVICE_NAME}"
+      deploymentconfig: "${SERVICE_NAME}"
+    sessionAffinity: None
+
+# Route
+- kind: Route
+  apiVersion: v1
+  metadata:
+    name: "${SERVICE_NAME}"
+    namespace: "${NAMESPACE}"
+    labels:
+      app: "${SERVICE_NAME}"
+  spec:
+    host: "${SERVICE_NAME}-${NAMESPACE}.ocp-apps.bahincubator.com"
+    to:
+      kind: Service
+      name: "${SERVICE_NAME}"
+      weight: 100
+    port:
+      targetPort: 80-tcp
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+    wildcardPolicy: None
+
+# ImageStream
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: "${SERVICE_NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    dockerImageRepository: "${REGISTRY}/${IMAGE_NAME}"
+    tags:
+      -
+        name: ${IMAGE_TAG}
+        from:
+          kind: DockerImage
+          name: "${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+        importPolicy:
+          insecure: true
+
+# Deployment
+- kind: DeploymentConfig
+  apiVersion: v1
+  metadata:
+    name: "${SERVICE_NAME}"
+    namespace: "${NAMESPACE}"
+    labels: 
+      app: "${SERVICE_NAME}"
+  spec:
+    replicas: 1
+    selector:
+      app: "${SERVICE_NAME}"
+      deploymentconfig: "${SERVICE_NAME}"
+    strategy:
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: "${SERVICE_NAME}"
+          deploymentconfig: "${SERVICE_NAME}"
+      spec:
+        containers:
+        - name: "${SERVICE_NAME}"
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          imagePullPolicy: Always
+    triggers:
+    - type: ConfigChange
+    - type: ImageChange
+      imageChangeParams:
+        automatic: true
+        containerNames:
+        - "${SERVICE_NAME}"
+        from:
+          kind: ImageStreamTag
+          namespace: "${NAMESPACE}"
+          name: "${SERVICE_NAME}:${IMAGE_TAG}"
+parameters:
+  - name: NAMESPACE 
+    displayName: Namespace 
+    description: "The namespace to create resources in"
+  - name: SERVICE_NAME
+    description: "The name of the project/service as {projectName}-{gitBranch}"
+  - name: REGISTRY
+    description: "The docker registry for the imagestream"
+  - name: IMAGE_NAME
+    description: "The image for the image stream"
+  - name: IMAGE_TAG
+    description: "The image tag for the image stream"

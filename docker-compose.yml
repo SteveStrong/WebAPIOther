@@ -1,0 +1,8 @@
+version: '3'
+
+services:
+  webapiother:
+    image: webapiother
+    build:
+      context: .
+      dockerfile: WebAPIOther/Dockerfile
