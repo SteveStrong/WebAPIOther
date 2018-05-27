@@ -23,4 +23,7 @@ ENTRYPOINT ["dotnet", "WebAPIOther.dll"]
 
 
 # docker build -t webapiother -f WebAPIOther.Dockerfile .
-# docker run -d -p 3002:80 --name webapiother webapiother
+# docker run -d -p 3002:80 --name webapiother webapiother 
+
+# docker tag webapiother  acmfimages.azurecr.io/webapiother 
+# docker push acmfimages.azurecr.io/webapiother 
